@@ -34,7 +34,13 @@ async function run() {
     await client.connect();
 
 
+    const eduServiceCollection = client.db("edu_db").collection("services");
 
+    app.post('/addService', async (req, res) => {
+      const service = req.body;
+      const result = await eduServiceCollection.insertOne(service);
+      res.send(result);
+    })
 
 
 
