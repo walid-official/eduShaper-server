@@ -35,7 +35,7 @@ async function run() {
 
 
     const eduServiceCollection = client.db("edu_db").collection("services");
-    
+    const bookServiceCollection = client.db("bookService_db").collection("bookServices");
 
     app.post('/addService', async (req, res) => {
       const service = req.body;
@@ -79,14 +79,21 @@ async function run() {
 
     // New Database For Book Education Service
 
-    const bookServiceCollection = client.db("bookService_db").collection("bookServices");
 
-    app.post("/bookServices",async(res,req) => {
+
+    app.post("/bookServices", async(req,res) => {
       const bookService = req.body;
       const result = await bookServiceCollection.insertOne(bookService);
       res.send(result);
     })
 
+    app.get("/bookServices/:email", async (req, res) => {
+      const email = req.params.email;
+      const query = {currentUserEmail: email };
+      const result = await bookServiceCollection.find(query).toArray();
+      res.send(result)
+    });
+  
 
 
 
