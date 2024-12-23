@@ -35,6 +35,7 @@ async function run() {
 
 
     const eduServiceCollection = client.db("edu_db").collection("services");
+    
 
     app.post('/addService', async (req, res) => {
       const service = req.body;
@@ -44,13 +45,6 @@ async function run() {
 
     app.get("/services", async (req, res) => {
       const result = await eduServiceCollection.find().toArray();
-      res.send(result)
-    });
-
-    app.get("/service/:id", async (req, res) => {
-      const id = req.params.id;
-      const query = {_id: new ObjectId(id)};
-      const result = await eduServiceCollection.findOne(query);
       res.send(result)
     });
 
@@ -67,6 +61,39 @@ async function run() {
       const result = await eduServiceCollection.deleteOne(query);
       res.send(result)
     });
+
+    app.get("/service/:id", async (req, res) => {
+      const id = req.params.id;
+      const query = {_id: new ObjectId(id)};
+      const result = await eduServiceCollection.findOne(query);
+      res.send(result)
+    });
+
+    app.patch("/updateService/:id", async (req, res) => {
+      const id = req.params.id;
+      const query = {_id: new ObjectId(id)};
+      const updatedService = req.body;
+      const result = await eduServiceCollection.updateOne(query, {$set: updatedService});
+      res.send(result)
+    });
+
+    // New Database For Book Education Service
+
+    const bookServiceCollection = client.db("bookService_db").collection("bookServices");
+
+    app.post("/bookServices",async(res,req) => {
+      const bookService = req.body;
+      const result = await bookServiceCollection.insertOne(bookService);
+      res.send(result);
+    })
+
+
+
+
+
+
+
+
 
     // Send a ping to confirm a successful connection
     await client.db("admin").command({ ping: 1 });
