@@ -11,9 +11,10 @@ app.use(
   cors({
     origin: [
       "http://localhost:5174",
+      "http://localhost:5173",
       "https://edu-service-sharing-web.vercel.app",
       "https://edu-service-sharing-c50kvndcj-walid-hasans-projects.vercel.app",
-      "https://education-service-d2fdb.web.app"
+      "https://education-service-d2fdb.web.app",
     ],
     credentials: true,
   })
@@ -88,14 +89,31 @@ async function run() {
         .send({ success: true });
     });
 
-    app.post("/addService", async (req, res) => {
+    app.post("/addService", verifyToken, async (req, res) => {
       const service = req.body;
       const result = await eduServiceCollection.insertOne(service);
       res.send(result);
     });
 
     app.get("/services", async (req, res) => {
+      const result = await eduServiceCollection.find().limit(6).toArray();
+      res.send(result);
+    });
+
+    app.get("/allServices", async (req, res) => {
       const result = await eduServiceCollection.find().toArray();
+      res.send(result);
+    });
+
+    app.get("/allServices/search", async (req, res) => {
+      const { searchParams } = req.query;
+      let option = {};
+      if (searchParams) {
+        option = {
+          serviceName: { $regex: searchParams, $options: "i" },
+        };
+      }
+      const result = await eduServiceCollection.find(option).toArray();
       res.send(result);
     });
 
@@ -105,9 +123,6 @@ async function run() {
       if (req.user.email !== email) {
         return res.status(403).send({ message: "Forbidden Access" });
       }
-      // const verify = req.user.email;
-      // const verify2 = email;
-      // console.log(verify,verify2);
       const result = await eduServiceCollection.find(query).toArray();
       res.send(result);
     });
@@ -165,7 +180,7 @@ async function run() {
       res.send(result);
     });
 
-    app.get("/bookToDoServices/:email",verifyToken, async (req, res) => {
+    app.get("/bookToDoServices/:email", verifyToken, async (req, res) => {
       const email = req.params.email;
       const query = { providerEmail: email };
       if (req.user.email !== email) {
