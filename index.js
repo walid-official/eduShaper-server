@@ -1,22 +1,47 @@
 require("dotenv").config();
 const express = require("express");
 const cors = require("cors");
+const cookieParser = require('cookie-parser');
 const { MongoClient, ServerApiVersion, ObjectId } = require("mongodb");
 var jwt = require("jsonwebtoken");
 const port = process.env.PORT || 5000;
 const app = express();
-app.use(cors({
-  origin: ["http://localhost:5000"],
-  credentials: true
-}));
-app.use(express.json());
 
-// DB_USER=edu_service
-// DB_PASSWORD=T2z44UfDSWMI0Fo3
+app.use(
+  cors({
+    origin: ["http://localhost:5173"],
+    credentials: true,
+  })
+);
+app.use(express.json());
+app.use(cookieParser())
+
 
 app.get("/", (req, res) => {
   res.send("Hello from SoloSphere Server....");
 });
+
+const verifyToken = (req,res,next) => {
+  console.log("Inside the Logger", req.cookies);
+  const token = req.cookies?.token;
+  console.log(token);
+  if(!token){
+    return res.status(401).send({message: "Unauthorized access"})
+  }
+  jwt.verify(token,process.env.ACCESS_SECRET_KEY,(err,decoded) => {
+    if(err){
+      return res.status(401).send({message: "Unauthorized access"})
+    }
+    req.user = decoded;
+    next();
+  })
+
+}
+
+
+
+
+
 
 const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASS}@cluster0.pxdhv.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0`;
 
@@ -34,24 +59,35 @@ async function run() {
     // Connect the client to the server	(optional starting in v4.7)
     await client.connect();
 
-    // Auth related ApIs
 
-    app.post("/jwt", async (req, res) => {
-      const user = req.body;
-      const token = jwt.sign(user, process.env.ACCESS_SECRET_KEY, { expiresIn: "365d" });
-     res
-     .cookie('token',token, {
-       httpOnly: true,
-       secure: false,
-       
-     })
-     .send({success: true});
- });
-
+    
     const eduServiceCollection = client.db("edu_db").collection("services");
     const bookServiceCollection = client
       .db("bookService_db")
       .collection("bookServices");
+
+
+    // Auth related ApIs
+
+    app.post("/jwt", async (req, res) => {
+      const user = req.body;
+      const token = jwt.sign(user, process.env.ACCESS_SECRET_KEY, {
+        expiresIn: "365d",
+      });
+      res
+        .cookie("token", token, {
+          httpOnly: true,
+          secure: false,
+        })
+        .send({ success: true });
+    });
+
+    app.post("/logout", async (req, res) => {
+      res.clearCookie("token",{
+        httpOnly: true,
+        secure: false,
+      }).send({ success: true });
+    });
 
     app.post("/addService", async (req, res) => {
       const service = req.body;
@@ -64,9 +100,15 @@ async function run() {
       res.send(result);
     });
 
-    app.get("/services/:email", async (req, res) => {
+    app.get("/services/:email", verifyToken, async (req, res) => {
       const email = req.params.email;
       const query = { "serviceProviderData.email": email };
+      if(req.user.email !== email){
+        return res.status(403).send({message: "Forbidden Access"})
+      }
+      // const verify = req.user.email;
+      // const verify2 = email;
+      // console.log(verify,verify2);
       const result = await eduServiceCollection.find(query).toArray();
       res.send(result);
     });
@@ -135,11 +177,11 @@ async function run() {
       const query = { _id: new ObjectId(id) };
       const updatedDoc = {
         $set: {
-          serviceStatus: bookToDoData.serviceStatus
+          serviceStatus: bookToDoData.serviceStatus,
         },
       };
-      const result = await bookServiceCollection.updateOne(query,updatedDoc)
-      res.send(result)
+      const result = await bookServiceCollection.updateOne(query, updatedDoc);
+      res.send(result);
     });
 
     // Send a ping to confirm a successful connection
