@@ -7,18 +7,28 @@ var jwt = require("jsonwebtoken");
 const port = process.env.PORT || 5000;
 const app = express();
 
-app.use(
-  cors({
-    origin: [
-      "http://localhost:5174",
-      "http://localhost:5173",
-      "https://edu-service-sharing-web.vercel.app",
-      "https://edu-service-sharing-c50kvndcj-walid-hasans-projects.vercel.app",
+// app.use(
+//   cors({
+//     origin: [
+//       "http://localhost:5174",
+//       // "https://edu-service-sharing-web.vercel.app",
+//       // "https://edu-service-sharing-c50kvndcj-walid-hasans-projects.vercel.app",
+//       "https://education-service-d2fdb.web.app",
+//     ],
+//     credentials: true,
+//   })
+// );
+
+app.use(cors({
+  origin: [
+      'http://localhost:5173',
       "https://education-service-d2fdb.web.app",
-    ],
-    credentials: true,
-  })
-);
+  ],
+  credentials: true
+}));
+
+
+
 app.use(express.json());
 app.use(cookieParser());
 
@@ -110,7 +120,10 @@ async function run() {
       let option = {};
       if (searchParams) {
         option = {
-          serviceName: { $regex: searchParams, $options: "i" },
+          $or: [
+            { serviceName: { $regex: searchParams, $options: "i" } },
+            { description: { $regex: searchParams, $options: "i" } },
+          ],
         };
       }
       const result = await eduServiceCollection.find(option).toArray();
@@ -134,7 +147,7 @@ async function run() {
       res.send(result);
     });
 
-    app.get("/service/:id", async (req, res) => {
+    app.get("/service/:id", verifyToken, async (req, res) => {
       const id = req.params.id;
       const query = { _id: new ObjectId(id) };
       const result = await eduServiceCollection.findOne(query);
